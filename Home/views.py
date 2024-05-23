@@ -1,8 +1,54 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from .serilizer import PeopleSerializer
+from .serilizer import PeopleSerializer,RegisterSerializer,LoginSerializer
 from .models import People
+from rest_framework.views import APIView
+from rest_framework import viewsets
+from rest_framework import status
+from django.contrib.auth import authenticate
+from rest_framework.authtoken.models import Token
 
+class RegisterApi(APIView):
+    
+    def post(self,request):
+        
+        data_=request.data
+        serializer=RegisterSerializer(data=data_)
+        
+        
+        if not serializer.is_valid():
+            
+            return Response({'message':serializer.errors},status=status.HTTP_404_NOT_FOUND)
+        serializer.save()
+        return Response({'message':"User created"},status=status.HTTP_201_CREATED)
+    
+class LoginApi(APIView):
+    
+    def post(self,request):
+        
+        data_=request.data
+        serializer = LoginSerializer(data=data_)
+        if not serializer.is_valid():
+            return Response({"message":serializer.errors},status=status.HTTP_404_NOT_FOUND)
+        user=authenticate(username=serializer.data['username'],password=serializer.data['password'])
+        print(user)
+        if not user:
+            return Response({"message":"invalid User Details"},status=status.HTTP_404_NOT_FOUND)
+        token,_=Token.objects.get_or_create(user=user)
+        return Response({"messages":"Login succesfully",'token':str(token)},status=status.HTTP_201_CREATED)
+
+class ClassPerson(APIView):
+    
+    def get(self,request):
+        
+        people_data = People.objects.filter(team__isnull=False)
+        serializer = PeopleSerializer(people_data, many=True)
+        return Response(serializer.data)
+    
+    def post(self,request):
+        
+        return Response("This is class based postmethod APIView ")
+    
 @api_view(['GET','POST','PUT','DELETE'])
 def index(request):
     
@@ -22,7 +68,7 @@ def index(request):
 @api_view(['GET', 'POST','PUT','PATCH','DELETE'])
 def PersonData(request):
     if request.method == "GET":
-        people_data = People.objects.all()
+        people_data = People.objects.filter(team__isnull=False)
         serializer = PeopleSerializer(people_data, many=True)
         return Response(serializer.data)
     
@@ -38,7 +84,6 @@ def PersonData(request):
     elif request.method == 'PUT':
         
         data=request.data
-        print(data)
         obj =People.objects.get(id=data['id'])
         serializer = PeopleSerializer(obj,data=data,partial=False)
         if serializer.is_valid():
@@ -60,3 +105,20 @@ def PersonData(request):
         obj=People.objects.get(id=data['id'])
         obj.delete()
         return Response({"message":"Person deleted"})
+    
+    
+class PeopleViewSets(viewsets.ModelViewSet):
+    
+    serializer_class = PeopleSerializer
+    queryset=People.objects.all()
+    
+    def list(self,request):
+        
+        search=request.GET.get("search")
+        queryset=self.queryset
+        
+        if search:
+            
+            queryset=queryset.filter(name__startswith=search)
+        serializer = PeopleSerializer(queryset,many=True)
+        return Response({'status code':200,'data':serializer.data},status=status.HTTP_204_NO_CONTENT)
