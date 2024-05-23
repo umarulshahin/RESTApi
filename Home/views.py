@@ -7,6 +7,9 @@ from rest_framework import viewsets
 from rest_framework import status
 from django.contrib.auth import authenticate
 from rest_framework.authtoken.models import Token
+from .models import *
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.authentication import TokenAuthentication
 
 class RegisterApi(APIView):
     
@@ -23,22 +26,40 @@ class RegisterApi(APIView):
         return Response({'message':"User created"},status=status.HTTP_201_CREATED)
     
 class LoginApi(APIView):
-    
+    permission_classes=[]
     def post(self,request):
         
         data_=request.data
         serializer = LoginSerializer(data=data_)
         if not serializer.is_valid():
             return Response({"message":serializer.errors},status=status.HTTP_404_NOT_FOUND)
-        user=authenticate(username=serializer.data['username'],password=serializer.data['password'])
+        user=authenticate(username=serializer.data['username'],password=serializer.data["password"])
         print(user)
         if not user:
             return Response({"message":"invalid User Details"},status=status.HTTP_404_NOT_FOUND)
         token,_=Token.objects.get_or_create(user=user)
         return Response({"messages":"Login succesfully",'token':str(token)},status=status.HTTP_201_CREATED)
 
-class ClassPerson(APIView):
+class peopleAuth(APIView):
     
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [TokenAuthentication]
+  
+    def get(self,request):
+        
+        people_data = People.objects.filter(team__isnull=False)
+        serializer = PeopleSerializer(people_data, many=True)
+        return Response(serializer.data)
+    
+    def post(self,request):
+        
+        return Response("This is class based postmethod APIView ")
+      
+
+  
+class ClassPerson(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [TokenAuthentication]
     def get(self,request):
         
         people_data = People.objects.filter(team__isnull=False)

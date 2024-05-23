@@ -14,4 +14,5 @@ urlpatterns = [
     path('classPerson/',ClassPerson.as_view(),name="classPerson"),
     path("register/",RegisterApi.as_view(),name="register"),
     path("login/",LoginApi.as_view(),name="login"),
+    path('peopleAuth/',peopleAuth.as_view(),name="peopleAuth"),
 ]

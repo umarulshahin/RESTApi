@@ -12,17 +12,17 @@ class RegisterSerializer(serializers.Serializer):
     def validate(self,data):
         
         if data["username"]:
-            if User_details.objects.filter(username=data["username"]).exists():
+            if User.objects.filter(username=data["username"]).exists():
                 raise serializers.ValidationError("User Alredy exist")
         if data["email"]:
-            if User_details.objects.filter(email=data["email"]).exists():
+            if User.objects.filter(email=data["email"]).exists():
                 raise serializers.ValidationError("Email alredy exist")
         return data
     
     def create(self,validated_data):
-        password=make_password(validated_data["password"])
-        User_details.objects.create(username=validated_data["username"],email=validated_data['email'],password=password)
-        
+        user=User.objects.create(username=validated_data["username"],email=validated_data['email'])
+        user.set_password(validated_data['password'])
+        user.save()
         return validated_data
 class LoginSerializer(serializers.Serializer):
      username=serializers.CharField()
