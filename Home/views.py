@@ -10,7 +10,8 @@ from rest_framework.authtoken.models import Token
 from .models import *
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import TokenAuthentication
-
+from rest_framework.pagination import PageNumberPagination
+from django.core.paginator import Paginator
 class RegisterApi(APIView):
     
     def post(self,request):
@@ -56,15 +57,25 @@ class peopleAuth(APIView):
         return Response("This is class based postmethod APIView ")
       
 
-  
 class ClassPerson(APIView):
     permission_classes = [IsAuthenticated]
     authentication_classes = [TokenAuthentication]
+    
+    
     def get(self,request):
+        try:
+            people_data = People.objects.filter()
+            page_number=request.GET.get("page",1)
+            page_size=3
+            paginator=Paginator(people_data,page_size)
+            
+            serializer = PeopleSerializer(paginator.page(page_number), many=True)
+            return Response(serializer.data)
+            
+        except Exception as e:
+            return Response({"Invalid page number"})
         
-        people_data = People.objects.filter(team__isnull=False)
-        serializer = PeopleSerializer(people_data, many=True)
-        return Response(serializer.data)
+    
     
     def post(self,request):
         
@@ -126,12 +137,18 @@ def PersonData(request):
         obj=People.objects.get(id=data['id'])
         obj.delete()
         return Response({"message":"Person deleted"})
+
+class CustomPagination(PageNumberPagination):
+    
+    page_size=5
+    page_size_query_param="page"
     
     
 class PeopleViewSets(viewsets.ModelViewSet):
-    
+    permission_classes=[]
     serializer_class = PeopleSerializer
     queryset=People.objects.all()
+    pagination_class=CustomPagination
     
     def list(self,request):
         
@@ -141,5 +158,8 @@ class PeopleViewSets(viewsets.ModelViewSet):
         if search:
             
             queryset=queryset.filter(name__startswith=search)
-        serializer = PeopleSerializer(queryset,many=True)
-        return Response({'status code':200,'data':serializer.data},status=status.HTTP_204_NO_CONTENT)
+            
+        paginated_queryset=self.paginate_queryset(queryset)
+            
+        serializer = PeopleSerializer(paginated_queryset,many=True)
+        return self.get_paginated_response({'status code':200,'data':serializer.data})
